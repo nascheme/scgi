@@ -1,19 +1,22 @@
 Summary of changes
-------------------
+==================
 
-1.11 (released 2006-MM-DD):
+1.11 (released 2006-MM-DD)
+--------------------------
 
-  * Update README and LICENSE files. --Neil Schemenauer
+Neil Schemenauer <nas@arctrix.com>:
+    Fix a mod_scgi bug that caused a segfault (due to a NULL pointer
+    dereference) with certain configurations.  Thanks to Thomas Yandell
+    for helping track down the bug.
 
-
-Author index
-------------
-
-  Neil Schemenauer <nas@arctrix.com>
+Neil Schemenauer <nas@arctrix.com>:
+    Update README and LICENSE files.
 
 
 Older changes
--------------
+=============
 
   See doc/CHANGES_110.txt for changes up to version 1.10.
 
+
+/* vim: set ai tw=74 et sw=4 sts=4: */

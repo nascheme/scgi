@@ -82,8 +82,6 @@ static int scgi_trans(request_rec *r)
 	}
 	if (cfg->mount.addr != UNSET) {
 		r->handler = "scgi-handler";
-		ap_set_module_config(r->request_config, &scgi_module,
-				     &cfg->mount);
 		return OK;
 	}
 	else {
@@ -110,8 +108,12 @@ int open_socket(request_rec *r)
 	int retries, sleeptime, rv;
 	struct sockaddr_in addr;
 	int sock;
+	scgi_cfg *cfg = our_dconfig(r);
 	mount_entry *p = (mount_entry *) ap_get_module_config(r->request_config,
 							      &scgi_module);
+	if (!p) {
+		p = &cfg->mount;
+	}
 
 	if (p->addr == UNSET)
 		addr.sin_addr.s_addr = inet_addr("127.0.0.1");
@@ -204,12 +206,6 @@ static char *lookup_header(request_rec *r, const char *name)
 {
 	return lookup_name(r->headers_in, name);
 }
-
-static char *lookup_env(request_rec *r, const char *name)
-{
-	return lookup_name(r->subprocess_env, name);
-}
-
 
 static char *original_uri(request_rec *r)
 {
@@ -306,7 +302,6 @@ static int send_headers(request_rec *r, BUFF *f)
 		/* skip PATH_INFO, don't know it */
 		add_header(t, "SCRIPT_NAME", r->uri);
 	}
-	add_header(t, "HTTPS", lookup_env(r, "HTTPS"));
 	add_header(t, "CONTENT_TYPE", lookup_header(r, "Content-type"));
 	add_header(t, "DOCUMENT_ROOT", ap_document_root(r));
 

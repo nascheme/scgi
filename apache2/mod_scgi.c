@@ -105,7 +105,6 @@ static int scgi_translate(request_rec *r)
         ap_assert(cfg->mount.port != UNSET);
         r->handler = "scgi-handler";
         r->filename = r->uri;
-        ap_set_module_config(r->request_config, &scgi_module, &cfg->mount);
         return OK;
     }
     else {
@@ -186,12 +185,6 @@ static char *lookup_name(apr_table_t *t, const char *name)
 static char *lookup_header(request_rec *r, const char *name)
 {
     return lookup_name(r->headers_in, name);
-}
-
-
-static char *lookup_env(request_rec *r, const char *name)
-{
-    return lookup_name(r->subprocess_env, name);
 }
 
 
@@ -343,7 +336,6 @@ send_headers(request_rec *r, struct sockbuff *s)
     add_header(t, "REQUEST_METHOD", r->method);
     add_header(t, "REQUEST_URI", original_uri(r));
     add_header(t, "QUERY_STRING", r->args ? r->args : "");
-    add_header(t, "SCRIPT_NAME", r->uri);
     if (r->path_info) {
         int path_info_start = find_path_info(r->uri, r->path_info);
         add_header(t, "SCRIPT_NAME", apr_pstrndup(r->pool, r->uri,
@@ -354,7 +346,6 @@ send_headers(request_rec *r, struct sockbuff *s)
         /* skip PATH_INFO, don't know it */
         add_header(t, "SCRIPT_NAME", r->uri);
     }
-    add_header(t, "HTTPS", lookup_env(r, "HTTPS"));
     add_header(t, "CONTENT_TYPE", lookup_header(r, "Content-type"));
     add_header(t, "DOCUMENT_ROOT", ap_document_root(r));
 
@@ -438,6 +429,10 @@ open_socket(apr_socket_t **sock, request_rec *r)
     scgi_cfg *cfg = our_dconfig(r);
     mount_entry *m = (mount_entry *) ap_get_module_config(r->request_config,
                                                           &scgi_module);
+    if (!m) {
+	m = &cfg->mount;
+    }
+
     timeout = CONFIG_VALUE(cfg->timeout, CONFIG_VALUE(scfg->timeout,
                                                       DEFAULT_TIMEOUT));
     rv = apr_sockaddr_info_get(&sockaddr,
