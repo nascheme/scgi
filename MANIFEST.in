@@ -1,0 +1,9 @@
+include CHANGES README LICENSE.txt MANIFEST.in setup.py cgi2scgi.c
+include apache1/mod_scgi.c
+include apache1/README
+include apache1/Makefile
+include apache2/mod_scgi.c
+include apache2/README
+include apache2/Makefile
+include scgi/*.py
+include scgi/*.c

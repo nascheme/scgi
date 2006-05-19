@@ -1,0 +1,209 @@
+1.10 (2006-02-01) r27892
+
+  * Compile fixes for Apache 2.2.0 (some APR functions have been renamed).
+
+
+1.9 (2005-12-13) r27717
+
+  * Make passfd.c work on 64-bit machines. Thanks to Dryice Liu.
+
+  * For Apache 2, set REQUEST_URI using the original request URI
+    (r->unparsed_uri may be different if there was a redirect).
+
+
+1.8 (2005-10-18) r27556
+
+  * Pass all HTTP headers to SCGI servers.
+
+  * Relax address family specification (allows IPv6).
+
+  * In some versions of Apache, ap_sock_disable_nagle() is not always
+    available.  Use lower-level API.
+
+
+1.7 (2005-08-17) r27222
+
+  * Fix another bug in Apache 2 mod_scgi implementation of SCGIMount.
+
+  * Make the SCGIServerTimeout directive work for SCGIMount and allow
+    it at the server level.
+
+  * Change SCGIHandler to default to "On" (instead of Off).  Make the
+    SCGIHandler option work with SCGIMount.
+
+
+1.6 (2005-08-11) r27186
+
+  * Fix bugs in Apache 2 mod_scgi implementation of SCGIMount directive.
+
+
+1.5 (2005-08-10) r27184
+
+  * Implement SCGIMount directive for mod_scgi.  In addition to being
+    simpler than SCGIServer and SCGIHandler, it allows the PATH_INFO
+    variable to be properly set (thanks to Ian Bicking for suggesting
+    the idea).
+
+
+1.4 (2005-06-15) r26909
+
+  * Have cgi2scgi.c send all environment variables to the SCGI server, not
+    just a fixed set of CGI related ones.
+
+  * Fix connection retry logic.  The code in cgi2scgi.c and
+    apache1/mod_scgi.c was non-portable and the apache2/mod_scgi.c code
+    was completely broken.
+
+
+1.3 (2005-06-02) r26869
+
+  * Change mod_scgi to include environment variables in the SCGI
+    request (thanks to Charles Hornberger).
+
+  * Add read_env() function to scgi_server module.
+
+  * Add note to README about using scgi_server.py script from Quixote 2.
+    (thanks to Mike Orr).
+
+  * Work around a conditional request Apache bug.  One symptom of the bug
+    was that Apache would send a 200 response when the status should have
+    been some special status like 304.
+
+
+1.2 (2004-07-20) r24736
+
+  * Fix "SCGIHandler On/Off" option for Apache 2 module.
+
+  * Add CGI to SCGI adaptor.  Tweak quixote_handler so that it doesn't
+    throw away PATH_INFO information (mod_scgi doesn't use it but CGI
+    does).
+
+
+1.2a2 (2004-02-27) r23588
+
+  * Fix a major bug in ns_reads().  It used to read too much data if
+    the entire contents of the netstring were not returned by the
+    first read().
+
+  * In the Apache 2 version of mod_scgi, implement buffered write
+    functions for sockets. Use them instead of the APR buckets
+    implementation when sending data to the SCGI server. The code using
+    buckets was almost certainly wrong.
+
+  * Add a 'translate' hook for the Apache 2 module.  That way the
+    handler does not need to be set explicitly (matching the behavior of
+    the 1.3 module).
+
+  * Send the HTTP_HOST header to the SCGI server.
+
+  * Include Python.h before any other headers.
+
+  * Remove pid file if SCGI server receives SIGTERM.
+
+
+1.2a1 (2003-07-28) r22096
+
+  * add mod_scgi implementation for Apache 2
+
+
+1.1 (2003-07-02) r21963
+
+  mod_scgi.c
+
+    * Pass HTTP/1.1 request headers to SCGI servers.
+      
+  passfd.c
+
+    * Try to make passfd compile on OpenBSD and older versions of Solaris.
+
+  scgi_server.py
+
+    * Merge Jon Corbet's graceful restart patch.
+
+
+1.0 (2003-05-29) r21747
+
+  quixote_handler.py
+
+    * Add -m option to specify the maximum number of children (from
+      Jonathan Corbet).
+
+  passfd.c
+
+    * Remove some dead code (spotted by Jonathan Corbet).
+
+
+1.0b1 (2003-02-07)
+
+  mod_scgi.c
+
+    * Reset the timeout while reading the request body.  This allows
+      large file uploads without the connection being reset.
+
+    * Slight simplification of cmd_server and cmd_handler.
+
+  quixote_handler.py
+
+    * By default, bind to local IP address 127.0.0.1 instead of 0.  Allow
+      the local address to be specified.
+
+  scgi_server.py
+
+    * After receiving a passed socket, explicitly set it to non-blocking.
+      This works around what seems to be a bug in FreeBSD.  Thanks to
+      Mike Watkins for helping track it down.
+
+
+0.5 (2002-09-05)
+
+  scgi_server.py
+
+    * Rewrite most of the scgi_server parent code.  Drop the table of
+      busy children and the shared pipe between the parent and children.
+      Instead, the children write a byte on the Unix domain pipe when they
+      are ready for a request.  In the process, fix a bug that caused the
+      parent to wait until all the children were ready before delegating a
+      request (found by Changjune Kim).
+
+  mod_scgi.c
+
+    * Pass REMOTE_USER to SCGI server (patch from Hamish Lawson).
+
+
+0.4 (2002-07-31)
+
+  quixote_handler.py
+
+    * Make debug() message a little more useful when we catch IOError on
+      closing connection.
+
+   scgi_server.py
+
+    * Fix a bug that caused the manager process to hang.  The hang was
+      trigged when the maximum number of child processes were running
+      and one died while the manager was trying to find an idle child to
+      process a request.
+
+
+0.3 (2002-06-04)
+
+  mod_scgi.c:
+
+    * disable verbose debugging output
+
+    * if the connection to the SCGI server is refused, sleep a little
+      and try again since it might have been restarted (as opposed giving
+      up right away and returning a 500 error to the poor user)
+
+  scgi_server.py:
+
+    * restart interrupted select() calls
+
+    * remove graceful restart code (on HUP signal) in scgi_server.py.  It's
+      complicated and now that mod_scgi retries it's not needed.
+
+  quixote_handler.py:
+
+    * close stdin
+
+/* vim: set ai tw=74 et sw=4 sts=4: */
