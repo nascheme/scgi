@@ -52,4 +52,13 @@ Software
        server software used).
 
 
+License
+-------
+
+    The SCGI package is copyrighted and made available under open source
+    licensing terms.  See LICENSE.txt for the details.  The CHANGES.txt
+    file summarizes the changes made since version 1.10 and lists the
+    authors of those changes.
+
+
 /* vim: set ai tw=74 et sw=4 sts=4: */

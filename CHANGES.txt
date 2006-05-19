@@ -1,0 +1,19 @@
+Summary of changes
+------------------
+
+1.11 (released 2006-MM-DD):
+
+  * Update README and LICENSE files. --Neil Schemenauer
+
+
+Author index
+------------
+
+  Neil Schemenauer <nas@arctrix.com>
+
+
+Older changes
+-------------
+
+  See doc/CHANGES_110.txt for changes up to version 1.10.
+
