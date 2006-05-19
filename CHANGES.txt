@@ -5,9 +5,16 @@ Summary of changes
 --------------------------
 
 Neil Schemenauer <nas@arctrix.com>:
+    In passfd.c, initialize tmpbuf contents.  Jonathan Corbet suggested
+    this as a fix for trouble on an AMD64 machine.
+
+Neil Schemenauer <nas@arctrix.com>:
     Fix a mod_scgi bug that caused a segfault (due to a NULL pointer
     dereference) with certain configurations.  Thanks to Thomas Yandell
     for helping track down the bug.
+
+Neil Schemenauer <nas@arctrix.com>:
+    Don't send duplicated headers for SCRIPT_NAME and HTTPS.
 
 Neil Schemenauer <nas@arctrix.com>:
     Update README and LICENSE files.

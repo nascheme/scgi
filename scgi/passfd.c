@@ -33,6 +33,7 @@ recv_fd(int sockfd)
 	struct msghdr msg;
 	void* buf[1];
 
+	memset(tmpbuf, 0, CONTROLLEN);
 	iov[0].iov_base = buf;
 	iov[0].iov_len = sizeof (buf);
 	msg.msg_iov = iov;
