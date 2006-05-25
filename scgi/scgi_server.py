@@ -137,7 +137,7 @@ class SCGIServer:
             os.close(self.children[pid])
             del self.children[pid]
 
-    def do_restart(self):
+    def do_stop(self):
         #
         # First close connections to the children, which will cause them
         # to exit after finishing what they are doing.
@@ -151,6 +151,11 @@ class SCGIServer:
         for pid in self.children.keys():
             (pid, status) = os.waitpid(pid, 0)
         self.children = {}
+
+    def do_restart(self):
+        # Stop
+        self.do_stop()
+
         #
         # Fire off a new child, we'll be wanting it soon.
         #
@@ -238,16 +243,19 @@ class SCGIServer:
             # max_children limit and they are all busy.
             timeout = 2
 
-
-    def serve(self):
+    def get_listening_socket(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.bind((self.host, self.port))
-        s.listen(40)
+        return s
+
+    def serve_on_socket(self, s):
+        self.socket = s
+        self.socket.listen(40)
         signal.signal(signal.SIGHUP, self.hup_signal)
         while 1:
             try:
-                conn, addr = s.accept()
+                conn, addr = self.socket.accept()
                 self.delegate_request(conn)
                 conn.close()
             except socket.error, e:
@@ -255,6 +263,9 @@ class SCGIServer:
                     raise  # something weird
             if self.restart:
                 self.do_restart()
+
+    def serve(self):
+        self.serve_on_socket(self.get_listening_socket())
 
 
 def main():
