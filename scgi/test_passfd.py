@@ -2,7 +2,8 @@
 #
 
 import os, sys, socket
-from scgi import passfd
+import passfd
+import tempfile
 
 #
 # Create a pipe for sending the fd.
@@ -11,6 +12,12 @@ from scgi import passfd
 rfd, wfd = passfd.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
 print "rfd", rfd, "wfd", wfd
 
+# We will pass this to the child
+fileObj = tempfile.TemporaryFile()
+line = 'Hello world!\n'
+fileObj.write(line)
+fileObj.flush()
+fileObj.seek(0)
 
 #
 # fork() off!
@@ -21,10 +28,6 @@ pid = os.fork()
 if pid != 0:
     # We're in the parent.
 
-    # Open a file for passing along to child.
-    
-    fileObj = open('/dev/zero', 'r')
-
     # ioctl() will only pass raw filedescriptors. Find fd of fileObj.
     fd = fileObj.fileno()
 
@@ -34,10 +37,13 @@ if pid != 0:
 
     # Wait for child to terminate, then exit.
     os.waitpid(pid, 0)
+    fileObj.close()
     sys.exit(0)
 
 else:
     # We're in the child.
+
+    fileObj.close()
     
     print os.read(rfd, 1)
     fd = passfd.recvfd(rfd)
@@ -46,6 +52,8 @@ else:
     fileObj = os.fdopen(fd, 'r')
 
     # Example usage: Read file, print the first line.
-    print "first byte", `fileObj.read(1)`
+    data = fileObj.readline()
+    print "Read line: %r, expected %r" % (data, line)
+    assert line == data
     sys.exit(0)
 
