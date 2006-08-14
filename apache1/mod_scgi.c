@@ -1,4 +1,4 @@
-#define MOD_SCGI_VERSION "1.9"
+#define MOD_SCGI_VERSION "1.11"
 #define SCGI_PROTOCOL_VERSION "1"
 /* #define VERBOSE_DEBUG */
 

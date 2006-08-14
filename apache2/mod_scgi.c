@@ -4,6 +4,9 @@
  *
  */
 
+#define MOD_SCGI_VERSION "1.11"
+#define SCGI_PROTOCOL_VERSION "1"
+
 #include "ap_config.h"
 #include "apr_version.h"
 #include "apr_lib.h"
@@ -16,8 +19,6 @@
 #include "http_protocol.h"
 #include "util_script.h"
 
-#define MOD_SCGI_VERSION "1.9"
-#define SCGI_PROTOCOL_VERSION "1"
 #define DEFAULT_TIMEOUT  60 /* default socket timeout */
 
 #define UNSET 0
