@@ -2,7 +2,7 @@
  * Passing file descriptions with Python.  Tested with Linux and FreeBSD.
  * Should also work on Solaris.  Portability fixes or success stories welcome.
  *
- * Neil Schemenauer <nas@mems-exchange.org>
+ * Neil Schemenauer <nas@arctrix.com>
  */
 
 #include "Python.h"
@@ -22,61 +22,55 @@
 #include <stddef.h>
 
 
-#define CONTROLLEN sizeof (struct cmsghdr) + sizeof (void*)
-
 static int
 recv_fd(int sockfd)
 {
-	char tmpbuf[CONTROLLEN];
-	struct cmsghdr *cmptr = (struct cmsghdr *) tmpbuf;
-	struct iovec iov[1];
+	char tmp[CMSG_SPACE(sizeof(int))];
+	struct cmsghdr *cmsg;
+	struct iovec iov;
 	struct msghdr msg;
-	void* buf[1];
+	char ch = '\0';
 
-	memset(tmpbuf, 0, CONTROLLEN);
-	iov[0].iov_base = buf;
-	iov[0].iov_len = sizeof (buf);
-	msg.msg_iov = iov;
+	memset(&msg, 0, sizeof(msg));
+	iov.iov_base = &ch;
+	iov.iov_len = 1;
+	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
-	msg.msg_name = NULL;
-	msg.msg_namelen = 0;
-
-	msg.msg_control = cmptr;
-	msg.msg_controllen = CONTROLLEN;
+	msg.msg_control = tmp;
+	msg.msg_controllen = sizeof(tmp);
 
 	if (recvmsg(sockfd, &msg, 0) <= 0)
 		return -1;
-
-	return *(int *) CMSG_DATA (cmptr);
+	cmsg = CMSG_FIRSTHDR(&msg);
+	return *(int *) CMSG_DATA(cmsg);
 }
 
 static int
 send_fd (int sockfd, int fd)
 {
-	char tmpbuf[CONTROLLEN];
-	struct cmsghdr *cmptr = (struct cmsghdr *) tmpbuf;
-        struct iovec iov[1];
-        struct msghdr msg;
-        void* buf[1];
+	char tmp[CMSG_SPACE(sizeof(int))];
+	struct cmsghdr *cmsg;
+	struct iovec iov;
+	struct msghdr msg;
+	char ch = '\0';
 
-        iov[0].iov_base = buf;
-        iov[0].iov_len = 1;
-        msg.msg_iov = iov;
-        msg.msg_iovlen = 1;
-        msg.msg_name = NULL;
-        msg.msg_namelen = 0;
-        msg.msg_control = cmptr;
-        msg.msg_controllen = CONTROLLEN;
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_control = (caddr_t) tmp;
+	msg.msg_controllen = CMSG_LEN(sizeof(int));
+	cmsg = CMSG_FIRSTHDR(&msg);
+	cmsg->cmsg_len = CMSG_LEN(sizeof(int));
+	cmsg->cmsg_level = SOL_SOCKET;
+	cmsg->cmsg_type = SCM_RIGHTS;
+	*(int *)CMSG_DATA(cmsg) = fd;
+	iov.iov_base = &ch;
+	iov.iov_len = 1;
+	msg.msg_iov = &iov;
+	msg.msg_iovlen = 1;
 
-        cmptr->cmsg_level = SOL_SOCKET;
-        cmptr->cmsg_type = SCM_RIGHTS;
-        cmptr->cmsg_len = CONTROLLEN;
-        *(int *)CMSG_DATA (cmptr) = fd;
+	if (sendmsg(sockfd, &msg, 0) != 1)
+		return -1;
 
-        if (sendmsg(sockfd, &msg, 0) != 1)
-                return -1;
-
-        return 0;
+	return 0;
 }
 
 

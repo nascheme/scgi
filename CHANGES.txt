@@ -1,16 +1,16 @@
 Summary of changes
 ==================
 
-1.11 (released 2006-MM-DD)
+1.11 (released 2006-08-14)
 --------------------------
 
-Joseph Tate <jtate@rpath.com>
+Joseph Tate <jtate@rpath.com>:
     Allow SCGIServer to use an open socket if provided by the calling
     procedure.  The existing serve() method remains the same.
 
 Neil Schemenauer <nas@arctrix.com>:
-    In passfd.c, initialize tmpbuf contents.  Jonathan Corbet suggested
-    this as a fix for trouble on an AMD64 machine.
+    Improve portability of the passfd module (solves at least one bug on
+    AMD64 machines).
 
 Neil Schemenauer <nas@arctrix.com>:
     Fix a mod_scgi bug that caused a segfault (due to a NULL pointer
