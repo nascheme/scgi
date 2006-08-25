@@ -129,9 +129,6 @@ class SCGIHandler:
 	sys.stdin = input
 	sys.stdout = output
 	for k, v in env.items():
-	    # (For some reason putenv doesn't seem to get through to os.environ
-	    # right away, so we do both here)
-	    os.putenv(k, v)
 	    os.environ[k] = v
 
         # Call CGI-like version of produce() function
