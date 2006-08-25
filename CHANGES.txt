@@ -11,6 +11,10 @@ Jeroen T. Vermeulen <jtv@thaiopensource.org>
     standard input and is expected to write its results to standard
     output.
 
+Neil Schemenauer <nas@arctrix.com>:
+    Define the CMSG_LEN and CMSG_SPACE macros if the platform doesn't
+    provide them.
+
 
 1.11 (released 2006-08-14)
 --------------------------

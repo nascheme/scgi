@@ -21,6 +21,23 @@
 #include <sys/uio.h>
 #include <stddef.h>
 
+/* for platforms that don't provide CMSG_*  macros */
+#ifndef ALIGNBYTES
+#define ALIGNBYTES (sizeof(int) - 1)
+#endif
+
+#ifndef ALIGN
+#define ALIGN(p) (((unsigned int)(p) + ALIGNBYTES) & ~ ALIGNBYTES)
+#endif
+
+#ifndef CMSG_LEN
+#define CMSG_LEN(len) (ALIGN(sizeof(struct cmsghdr)) + ALIGN(len))
+#endif
+
+#ifndef CMSG_SPACE
+#define CMSG_SPACE(len) (ALIGN(sizeof(struct cmsghdr)) + ALIGN(len))
+#endif
+
 
 static int
 recv_fd(int sockfd)
