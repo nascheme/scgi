@@ -76,86 +76,87 @@ class SCGIHandler:
         return read_env(input)
 
     def handle_connection(self, conn):
-        """Handle an incoming request.  This used to be the function to override
-	in your own handler class, and doing so will still work.  It will be
-	easier (and therefore probably safer) to override produce() or
-	produce_cgilike() instead.
-	"""
+        """Handle an incoming request. This used to be the function to
+        override in your own handler class, and doing so will still work.
+        It will be easier (and therefore probably safer) to override
+        produce() or produce_cgilike() instead.
+        """
         input = conn.makefile("r")
         output = conn.makefile("w")
         env = self.read_env(input)
-	bodysize = int(env.get('CONTENT_LENGTH', 0))
-	try:
-	    self.produce(env, bodysize, input, output)
-	finally:
+        bodysize = int(env.get('CONTENT_LENGTH', 0))
+        try:
+            self.produce(env, bodysize, input, output)
+        finally:
             output.close()
             input.close()
             conn.close()
 
     def produce(self, env, bodysize, input, output):
-        """This is the function you normally override to run your application.
-	It is called once for every incoming request that this process is
-	expected to handle.
+        """This is the function you normally override to run your
+        application. It is called once for every incoming request that
+        this process is expected to handle.
 
         Parameters:
 
         env - a dict mapping CGI parameter names to their values.
 
-	bodysize - an integer giving the length of the request body, in bytes
-	(or zero if there is none, of course).
+        bodysize - an integer giving the length of the request body, in
+        bytes (or zero if there is none).
 
-        input - a file allowing you to read the request body, if any, over a
-	socket.  The body is exactly bodysize bytes long; don't try to read more
-	than bodysize bytes.  This parameter is taken from the CONTENT_LENGTH
-	CGI parameter.
+        input - a file allowing you to read the request body, if any,
+        over a socket. The body is exactly bodysize bytes long; don't
+        try to read more than bodysize bytes. This parameter is taken
+        from the CONTENT_LENGTH CGI parameter.
 
-	output - a file allowing you to write your page over a socket back to
-	the client.  Before writing the page's contents, you must write an http
-	header, e.g. "Content-Type: text/plain\\r\\n"
+        output - a file allowing you to write your page over a socket
+        back to the client.  Before writing the page's contents, you
+        must write an http header, e.g. "Content-Type: text/plain\\r\\n"
 
-	The default implementation of this function sets up a CGI-like
-	environment, calls produce_cgilike(), and then restores the original
-	environment for the next request.  It is probably faster and cleaner to
-	override produce(), but produce_cgilike() may be more convenient.
-	"""
-	import os, sys
+        The default implementation of this function sets up a CGI-like
+        environment, calls produce_cgilike(), and then restores the
+        original environment for the next request.  It is probably
+        faster and cleaner to override produce(), but produce_cgilike()
+        may be more convenient.
+        """
 
-	# Preserve current system environment
-	stdin = sys.stdin
-	stdout = sys.stdout
-	environ = os.environ.copy()
+        # Preserve current system environment
+        stdin = sys.stdin
+        stdout = sys.stdout
+        environ = os.environ
 
-	# Set up CGI-like environment for produce_cgilike()
-	sys.stdin = input
-	sys.stdout = output
-	for k, v in env.items():
-	    os.environ[k] = v
+        # Set up CGI-like environment for produce_cgilike()
+        sys.stdin = input
+        sys.stdout = output
+        os.environ = env
 
         # Call CGI-like version of produce() function
-	try:
-	    self.produce_cgilike(env, bodysize)
-	finally:
-	    # Restore original environment no matter what happens
-	    sys.stdin = stdin
-	    sys.stdout = stdout
-	    os.environ = environ
+        try:
+            self.produce_cgilike(env, bodysize)
+        finally:
+            # Restore original environment no matter what happens
+            sys.stdin = stdin
+            sys.stdout = stdout
+            os.environ = environ
 
 
     def produce_cgilike(self, env, bodysize):
-        """A CGI-like version of produce.  Override this function instead of
-	produce() if you want a CGI-like environment: CGI parameters are added
-	to your environment variables, the request body can be read on standard
-	input, and the resulting page is written to standard output.
+        """A CGI-like version of produce. Override this function instead
+        of produce() if you want a CGI-like environment: CGI parameters
+        are added to your environment variables, the request body can be
+        read on standard input, and the resulting page is written to
+        standard output.
 
-	The CGI parameters are also passed as env, and the size of the request
-	body in bytes is passed as bodysize (or zero if there is no body).
+        The CGI parameters are also passed as env, and the size of the
+        request body in bytes is passed as bodysize (or zero if there is
+        no body).
 
-	Default implementation is to produce a text page listing the request's
-	CGI parameters, which can be useful for debugging.
-	"""
-	sys.stdout.write("Content-Type: text/plain\r\n\r\n")
-	for k, v in env.items():
-	    print "%s: %r" % (k,v)
+        Default implementation is to produce a text page listing the
+        request's CGI parameters, which can be useful for debugging.
+        """
+        sys.stdout.write("Content-Type: text/plain\r\n\r\n")
+        for k, v in env.items():
+            print "%s: %r" % (k, v)
 
 
 class SCGIServer:
@@ -171,7 +172,7 @@ class SCGIServer:
         self.children = {} # { pid : fd }
         self.spawn_child()
         self.restart = 0
-        
+
     #
     # Deal with a hangup signal.  All we can really do here is
     # note that it happened.
@@ -189,7 +190,7 @@ class SCGIServer:
         if pid == 0:
             if conn:
                 conn.close() # in the midst of handling a request, close
-                             # the connection in the child 
+                             # the connection in the child
             os.close(child_fd)
             self.handler_class(parent_fd).serve()
             sys.exit(0)
@@ -229,7 +230,7 @@ class SCGIServer:
         #
         self.spawn_child()
         self.restart = 0
-        
+
 
     def delegate_request(self, conn):
         """Pass a request fd to a child process to handle.  This method
@@ -302,11 +303,11 @@ class SCGIServer:
 
             # didn't find any child, check if any died
             self.reap_children()
-            
+
             # start more children if we haven't met max_children limit
             if len(self.children) < self.max_children:
                 self.spawn_child(conn)
-            
+
             # Start blocking inside select.  We might have reached
             # max_children limit and they are all busy.
             timeout = 2

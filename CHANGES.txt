@@ -1,14 +1,16 @@
 Summary of changes
 ==================
 
-After 1.11 (2006-08-25)
+1.12 (2006-XX-XX)
 -----------------------
+
 Jeroen T. Vermeulen <jtv@thaiopensource.org>
     Provide a new overridable method in SCGIHandler, produce(), as a more
     user-friendly alternative to handle_connection().  Another new
     alternative is produce_cgilike() which receives the request payload on
     standard input and is expected to write its results to standard
     output.
+
 
 1.11 (released 2006-08-14)
 --------------------------
