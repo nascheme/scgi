@@ -41,8 +41,10 @@ if hasattr(core, 'setup_keywords'):
           'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
           ]
     if 'download_url' in core.setup_keywords:
-        kw['download_url'] = ('http://quixote.python.ca/releases/'
+        kw['download_url'] = ('http://python.ca/scgi/releases/'
                               'scgi-%s.tar.gz' % kw['version'])
+    if 'url' in core.setup_keywords:
+        kw['url'] = 'http://python.ca/scgi/'
 
 
 core.setup(**kw)

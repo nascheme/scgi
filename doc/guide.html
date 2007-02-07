@@ -1,0 +1,390 @@
+<?xml version="1.0" encoding="us-ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="CONTENT-TYPE" content="text/html; charset=us-ascii" />
+    <title>SCGI Guide</title>
+    <style type="text/css">
+/*<![CDATA[*/
+        <!--
+                @page { margin: 0.79in }
+        -->
+/*]]>*/
+</style>
+  </head>
+  <body lang="en-GB" xml:lang="en-GB">
+    <h1>Using SCGI with Apache 2.x and Python</h1>
+    <p>This guide describes how to use SCGI with Apache 2.x, to serve an
+        application written in Python. The SCGI package also comes with modules
+        to use the protocol with Apache 1.x or <tt>lighttpd</tt>, and
+        frameworks for applications in other languages are available (including
+        LISP).</p>
+    <p>A complete setup for an SCGI application involves these four
+        components:</p>
+    <ol>
+      <li>
+        <p style="margin-bottom: 0in">A web server to process incoming
+            <tt>http</tt> requests--in our case, Apache 2.</p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0in">The Apache SCGI module to delegate
+            requests over the SCGI protocol.</p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0in">An SCGI server process based on the
+            Python <tt>scgi_server</tt> module.</p>
+      </li>
+      <li>
+        <p>An application to be run in child processes forked off by the
+            server process.</p>
+      </li>
+    </ol>
+    <p>A single SCGI server process serves only one application, but
+        multiple instances of it. Each instance lives in its own child process
+        of the SCGI server. More child processes are created on demand.</p>
+    <h2>Apache module</h2>
+    <p>To install the module by hand, <tt>cd</tt> into the <tt>apache2</tt>
+        subdirectory of the SCGI source tree, and, as root, <tt>make
+        install</tt>. On Debian-based systems and Gentoo, however, just install
+        the <tt>libapache2-mod-scgi</tt> package. RPM users can install
+        <tt>apache2-mod_scgi</tt>.</p>
+    <p>Next, set up the webserver to load the module and delegate requests
+        (in this example, for the <tt>http</tt> path "<tt>/dynamic</tt>") to a
+        separate server process accepting SCGI requests over a TCP socket. That
+        server will typically run on the same machine as the <tt>http</tt>
+        server, but it doesn't have to. Here's a snippet of Apache 2 config to
+        delegate requests for the <tt>http</tt> path <tt>/dynamic</tt> to local
+        TCP port 4000, which is the default:</p>
+    <pre>
+# (This actually better set up permanently with the command line
+# "a2enmod scgi" but shown here for completeness)
+LoadModule scgi_module /usr/lib/apache2/modules/mod_scgi.so
+
+# Set up a location to be served by an SCGI server process
+SCGIMount /dynamic/ 127.0.0.1:4000
+</pre>
+    <p>The deprecated way of delegating requests to an SCGI server
+	is as follows:</p>
+    <pre>
+&lt;Location "/dynamic"&gt;
+    # Enable SCGI delegation
+    SCGIHandler On
+    # Delegate requests in the "/dynamic" path to daemon on local
+    # server, port 4000
+    SCGIServer 127.0.0.1:4000
+&lt;/Location&gt;
+</pre>
+    <p>Note that using <tt>SCGIMount</tt> instead of <tt>SCGIServer</tt>
+	allows Apache to compute <tt>PATH_INFO</tt> as most software
+	expects.</p>
+    <p>Here's a description of the configuration directives accepted by
+        this Apache module. The information is largely derived from the source,
+        so please excuse (or better yet: help improve) poor descriptions:</p>
+    <table width="99%" border="0" cellpadding="2" cellspacing="0">
+      <col width="43*" />
+      <col width="52*" />
+      <col width="57*" />
+      <col width="103*" />
+      <tr>
+        <th width="17%" bgcolor="#E6E6E6">
+          <p>
+            <strong>Directive</strong>
+          </p>
+        </th>
+        <th width="20%" bgcolor="#E6E6E6">
+          <p>
+            <strong>Arguments</strong>
+          </p>
+        </th>
+        <th width="22%" bgcolor="#E6E6E6">
+          <p>
+            <strong>Example</strong>
+          </p>
+        </th>
+        <th width="40%" bgcolor="#E6E6E6">
+          <p>
+            <strong>Description</strong>
+          </p>
+        </th>
+      </tr>
+      <tr>
+        <td width="17%" bgcolor="#E6E6E6">
+          <p>
+            <tt>SCGIMount</tt>
+          </p>
+        </td>
+        <td width="20%" bgcolor="#E6E6E6">
+          <p><tt>http</tt> path and IP/port pair</p>
+        </td>
+        <td width="22%" bgcolor="#E6E6E6">
+          <p>
+            <tt>/dynamic 127.0.0.1:4000</tt>
+          </p>
+        </td>
+        <td width="40%" bgcolor="#E6E6E6">
+          <p>Path prefix and address of SCGI server</p>
+        </td>
+      </tr>
+      <tr>
+        <td width="17%" bgcolor="#E6E6E6">
+          <p>
+            <tt>SCGIServer</tt>
+          </p>
+        </td>
+        <td width="20%" bgcolor="#E6E6E6">
+          <p>IP address and port</p>
+        </td>
+        <td width="22%" bgcolor="#E6E6E6">
+          <p>
+            <tt>127.0.0.1:4000</tt>
+          </p>
+        </td>
+        <td width="40%" bgcolor="#E6E6E6">
+          <p>Address and port of an SCGI server</p>
+        </td>
+      </tr>
+      <tr>
+        <td width="17%" bgcolor="#E6E6E6">
+          <p>
+            <tt>SCGIHandler</tt>
+          </p>
+        </td>
+        <td width="20%" bgcolor="#E6E6E6">
+          <p><em>On</em> or <em>Off</em></p>
+        </td>
+        <td width="22%" bgcolor="#E6E6E6">
+          <p>
+            <tt>On</tt>
+          </p>
+        </td>
+        <td width="40%" bgcolor="#E6E6E6">
+          <p>Enable delegation of requests through SCGI</p>
+        </td>
+      </tr>
+      <tr>
+        <td width="17%" bgcolor="#E6E6E6">
+          <p>
+            <tt>SCGIServerTimeout</tt>
+          </p>
+        </td>
+        <td width="20%" bgcolor="#E6E6E6">
+          <p>Number of seconds</p>
+        </td>
+        <td width="22%" bgcolor="#E6E6E6">
+          <p>10</p>
+        </td>
+        <td width="40%" bgcolor="#E6E6E6">
+          <p>Timeout for communication with SCGI server</p>
+        </td>
+      </tr>
+    </table>
+    <h2>Server process</h2>
+    <p>To install the Python module for creating SCGI applications, go to
+        the main SCGI source directory and run <tt><em>python setup.py
+        build</em></tt> and then, as <tt>root</tt>, <em><tt>python setup.py
+        install</tt>.</em> Or, on most GNU/Linux systems, just install the
+        <tt>python-scgi</tt> package.</p>
+    <p>The hard part is creating that application server process. The SCGI
+        home page provides a server implementation in Python, called
+        <tt>scgi_server.py</tt>, but this is really just a kind of support
+        module. In order to port an application to use this server, write a
+        main program in Python that imports this module and uses it. There is
+        one, fairly complex, example that makes an application called <a href="http://www.quixote.ca/">Quixote</a> run over
+        SCGI.</p>
+    <p>The main program that you write for yourself creates a handler class
+        describing how requests should be processed. You then tell the SCGI
+        server module to loop forever, handling incoming requests and creating
+        processes running your handler class as needed. <em>It is your own
+        responsibility to ensure that the server process is running.</em></p>
+    <p>Once the SCGI server process runs, it can accept requests forwarded
+        by the <tt>http</tt> server. It will attempt to delegate every request
+        that comes in to an existing child process, invoking its handler. If no
+        child process is free to take the request, an additional child process
+        is spawned (if the configured maximum number of child processes is not
+        exceeded; if it is, the request blocks until a child process becomes
+        free). If a handler "dies" (e.g. exits with an exception), a new child
+        is spawned to replace it.</p>
+    <h3>Writing a handler</h3>
+    <p>The server process must <tt>import scgi_server</tt>, then derive
+        handler classes from <tt>scgi_server.SCGIHandler</tt>. Just
+        <tt>scgi_server.py</tt> can also be run standalone, in which case it
+        return pages displaying the details of your browser's request.</p>
+    <p>Your handler class should be derived from the <tt>SCGIHandler</tt>
+        class defined in <tt>scgi_server.py</tt>, and override its
+        <tt>produce()</tt> function to process a request. This is new in SCGI
+        1.12. Before that, the function to override was
+        <tt>handle_connection()</tt> which involved a lot more work.</p>
+    <p>Besides <em><tt>self</tt>,</em> the <tt>produce()</tt> function
+        takes several arguments:</p>
+    <ol>
+      <li>
+        <p style="margin-bottom: 0in">
+          <em>a dict mapping names of CGI
+            parameters to request details</em>
+        </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0in">
+          <em>size (in bytes) of the request
+            body</em>
+        </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0in">
+          <em>an input stream providing the
+            request body</em>
+        </p>
+      </li>
+      <li>
+        <p>
+          <em>an output stream to write a page to.</em>
+        </p>
+      </li>
+    </ol>
+    <p>Alternatively, override <tt>SCGIHandler.produce_cgilike()</tt> which
+        can read the request body from standard input, write its output to
+        standard output, and receives its request details both as an argument
+        dict and added to its environment variables.</p>
+    <p>Your output should start out with an <tt>http</tt> header, so
+        normally you'd want to start out with something like <tt>"Content-Type:
+        text/plain\r\n\r\n"</tt> followed by page content.</p>
+    <p>Besides a header containing CGI variables, the request may also
+        contain a body. The length of this body is passed as the CGI parameter
+        <tt>CONTENT_LENGTH</tt>, but for your convenience is also converted to
+        an integer and passed separately to the <tt>produce()</tt> function. If
+        your handler needs the request body, it can read this number of bytes
+        from its input socket. Do not rely on EOF; explicitly read the correct
+        number of bytes (or less, if that's what you want).</p>
+    <h3>Writing a server</h3>
+    <p>Your main SCGI server program should create an <tt>SCGIServer</tt>
+        object (defined in <tt>scgi_server.py</tt>), passing in your handler
+        class for the <tt>handler_class</tt> parameter, and then call its
+        <tt>serve()</tt> method which will loop indefinitely to process
+        requests:</p>
+    <pre>
+def main():
+    SCGIServer(handler_class=MyAppHandler).serve()
+
+if __name__ == "__main__":
+    main()
+</pre>
+    <p>You may want to support command-line options to influence various
+        options of the server's operation. The <tt>SCGIServer</tt>
+        initialization function takes several arguments:</p>
+    <center>
+      <table width="67%" border="0" cellpadding="2" cellspacing="0">
+        <col width="53*" />
+        <col width="157*" />
+        <col width="46*" />
+        <tr>
+          <th width="21%" bgcolor="#E6E6E6">
+            <p>
+              <strong>Name</strong>
+            </p>
+          </th>
+          <th width="61%" bgcolor="#E6E6E6">
+            <p>
+              <strong>Meaning</strong>
+            </p>
+          </th>
+          <th width="18%" bgcolor="#E6E6E6">
+            <p>
+              <strong>Default</strong>
+            </p>
+          </th>
+        </tr>
+        <tr>
+          <td width="21%" bgcolor="#E6E6E6">
+            <p>
+              <tt>handler_class</tt>
+            </p>
+          </td>
+          <td width="61%" bgcolor="#E6E6E6">
+            <p>Class (not object!) of handler to invoke for requests</p>
+          </td>
+          <td width="18%" bgcolor="#E6E6E6">
+            <p>
+              <tt>SCGIHandler</tt>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td width="21%" bgcolor="#E6E6E6">
+            <p>
+              <tt>host</tt>
+            </p>
+          </td>
+          <td width="61%" bgcolor="#E6E6E6">
+            <p>Local IP address to bind to</p>
+          </td>
+          <td width="18%" bgcolor="#E6E6E6">
+            <p>
+              <em>empty string</em>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td width="21%" bgcolor="#E6E6E6">
+            <p>
+              <tt>port</tt>
+            </p>
+          </td>
+          <td width="61%" bgcolor="#E6E6E6">
+            <p>TCP port to listen on</p>
+          </td>
+          <td width="18%" bgcolor="#E6E6E6">
+            <p>4000</p>
+          </td>
+        </tr>
+        <tr>
+          <td width="21%" bgcolor="#E6E6E6">
+            <p>
+              <tt>max_children</tt>
+            </p>
+          </td>
+          <td width="61%" bgcolor="#E6E6E6">
+            <p>Maximum number of child processes to spawn</p>
+          </td>
+          <td width="18%" bgcolor="#E6E6E6">
+            <p>5</p>
+          </td>
+        </tr>
+      </table>
+    </center>
+    <h2>Links</h2>
+    <ul>
+      <li>
+        <p style="margin-bottom: 0in">
+          <a href="http://python.ca/nas/scgi/">SCGI home
+            page</a>
+        </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0in">
+          <a href="http://quixote.python.ca/releases/">SCGI download</a>
+        </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0in">
+          <a href="http://simon.bofh.ms/cgi-bin/trac-django-projects.cgi/wiki/DjangoScgi">
+            Setting up Django with SCGI</a>
+        </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0in">
+          <a href="http://www.rexx.com/%7Edkuhlman/quixote_scgi.html">Setting up
+            Quixote with SCGI</a>
+        </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0in">
+          <a href="http://www.zedshaw.com/projects/scgi_rails/">Using Ruby on Rails
+            with SCGI</a>
+        </p>
+      </li>
+      <li>
+        <p>bazaar-ng (<em>bzr</em>) repository: <a href="http://quixote.python.ca/scgi.dev/">http://quixote.python.ca/scgi.dev/</a></p>
+      </li>
+    </ul>
+  </body>
+</html>

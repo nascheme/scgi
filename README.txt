@@ -11,6 +11,9 @@ Protocol
 Software
 --------
 
+    See doc/guide.html for an overview of how SCGI works.  Below is a
+    list of components included in this package.
+
     scgi
     ----
 

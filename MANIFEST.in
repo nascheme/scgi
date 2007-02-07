@@ -1,5 +1,6 @@
 include *.txt MANIFEST.in setup.py cgi2scgi.c
 include doc/*.txt
+include doc/*.html
 include apache1/mod_scgi.c
 include apache1/README.txt
 include apache1/Makefile
