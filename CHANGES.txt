@@ -1,6 +1,16 @@
 Summary of changes
 ==================
 
+1.13 (XXXX-XX-XX)
+-----------------
+
+Neil Schemenauer <nas@arctrix.com>:
+    Ensure that PATH_INFO is correct even when mod_rewrite modifies
+    r->path_info.  One way this could happen is if the path being served
+    by SCGI exists on the filesystem.  The fix was pointed out by David
+    Binger.
+
+
 1.12 (2006-10-02)
 -----------------
 

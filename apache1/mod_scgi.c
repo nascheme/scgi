@@ -253,14 +253,6 @@ static void add_header(table *t, const char *name, const char *value)
 	}
 }
 
-static int find_path_info(const char *uri, const char *path_info)
-{
-	int n;
-	n = strlen(uri) - strlen(path_info);
-	ap_assert(n >= 0);
-	return n;
-}
-
 static int send_headers(request_rec *r, BUFF *f)
 {
 	table *t;
@@ -293,10 +285,30 @@ static int send_headers(request_rec *r, BUFF *f)
 	add_header(t, "REQUEST_URI", original_uri(r));
 	add_header(t, "QUERY_STRING", r->args ? r->args : "");
 	if (r->path_info) {
-		int path_info_start = find_path_info(r->uri, r->path_info);
-		add_header(t, "SCRIPT_NAME", ap_pstrndup(r->pool, r->uri,
-							 path_info_start));
-		add_header(t, "PATH_INFO", r->path_info);
+		/*
+		This request uri apparently matched one of the mount points.
+		We want the matching mount point to be the SCRIPT_NAME, always.
+		We want the rest of the uri to be the PATH_INFO, always.
+		Under certain apache configurations, r->path_info is modified
+		between the time the match is found and the scgi handler is
+		called, so we go back to the matching mount entry to make sure
+		that we get the right SCRIPT_NAME, and we use it to find the
+		corresponding value for PATH_INFO.
+		*/
+		mount_entry *entry;
+		entry = ap_get_module_config(r->request_config, &scgi_module);
+		if (entry) {
+			char *mount_point;
+			char *path_info;
+			mount_point = entry->path;
+			mount_entry_matches(r->uri, mount_point, &path_info);
+			add_header(t, "SCRIPT_NAME", mount_point);
+			add_header(t, "PATH_INFO", path_info);
+		}
+		else {
+			/* skip PATH_INFO, don't know it */
+			add_header(t, "SCRIPT_NAME", r->uri);
+		}
 	}
 	else {
 		/* skip PATH_INFO, don't know it */
