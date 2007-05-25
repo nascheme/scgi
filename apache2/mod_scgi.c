@@ -138,9 +138,7 @@ static int scgi_map_location(request_rec *r)
 static void log_err(const char *file, int line, request_rec *r,
                     apr_status_t status, const char *msg)
 {
-    char buf[256] = "";
-    apr_strerror(status, buf, sizeof(buf));
-    ap_log_rerror(file, line, APLOG_ERR, status, r, "scgi: %s: %s", buf, msg);
+    ap_log_rerror(file, line, APLOG_ERR, status, r, "scgi: %s", msg);
 }
 
 static void log_debug(const char *file, int line, request_rec *r, const

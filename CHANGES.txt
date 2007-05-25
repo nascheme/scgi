@@ -10,6 +10,9 @@ Neil Schemenauer <nas@arctrix.com>:
     by SCGI exists on the filesystem.  The fix was pointed out by David
     Binger.
 
+Neil Schemenauer <nas@arctrix.com>:
+    Remove duplicated text from Apache error messages.
+
 
 1.12 (2006-10-02)
 -----------------
