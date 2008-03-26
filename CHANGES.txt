@@ -4,6 +4,9 @@ Summary of changes
 1.13 (XXXX-XX-XX)
 -----------------
 
+Daniel Rall <dlr@finemaltcoding.com>:
+    Fix error message typo in passfd.c.
+
 Neil Schemenauer <nas@arctrix.com>:
     Ensure that PATH_INFO is correct even when mod_rewrite modifies
     r->path_info.  One way this could happen is if the path being served

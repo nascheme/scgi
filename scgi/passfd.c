@@ -119,7 +119,7 @@ passfd_recvfd(PyObject *self, PyObject *args)
 {
 	int sockfd, fd;
 
-	if (!PyArg_ParseTuple(args, "i:revcfd", &sockfd))
+	if (!PyArg_ParseTuple(args, "i:recvfd", &sockfd))
 		return NULL;
 
 	if ((fd = recv_fd(sockfd)) < 0) {
