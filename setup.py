@@ -9,7 +9,7 @@ from scgi.__init__ import __version__
 def _check_version_numbers():
     import re
     PAT = re.compile(r'(^|VERSION ")%s\b' % re.escape(__version__), re.M)
-    for fn in ["CHANGES.txt", "apache1/mod_scgi.c", "apache2/mod_scgi.c"]:
+    for fn in ["apache1/mod_scgi.c", "apache2/mod_scgi.c"]:
         if not PAT.search(open(fn).read(200)):
             raise AssertionError("version number mismatch in %r" % fn)
 

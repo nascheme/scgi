@@ -4,8 +4,10 @@ SCGI: A Simple Common Gateway Interface alternative
 Protocol
 --------
 
-    See http://python.ca/nas/scgi/protocol.txt for the specification of
-    the SCGI protocol.
+    SCGI is a protocol for connecting web application servers to HTTP
+    servers (e.g. Apache).  For typical applications, it provides much
+    better performance verses using CGI.  See http://python.ca/scgi/ for
+    details on the SCGI protocol including a specification.
 
 
 Software
@@ -26,7 +28,7 @@ Software
 
         An Apache 1.3 module that implements the client side of the
         protocol.  See the README file in the apache1 directory for more
-        details. 
+        details.
 
 
     apache2
@@ -34,13 +36,12 @@ Software
 
         An Apache 2.0 module that implements the client side of the
         protocol.  See the README file in the apache2 directory for more
-        details.  NOTE: this module has not received a lot of testing
-        yet and may still be unreliable.
+        details.
 
 
     cgi2scgi
     --------
-    
+
         A CGI script that forwards requests to a SCGI server.  This is
         useful in situations where you cannot or do not want to use the
         mod_scgi module.  Because the CGI script is small performance is
@@ -55,13 +56,21 @@ Software
        server software used).
 
 
+Source
+------
+
+    The source code is managed using git.  You can checkout a copy using
+    the command:
+
+        git clone http://quixote.ca/src/scgi.git
+
+
 License
 -------
 
     The SCGI package is copyrighted and made available under open source
-    licensing terms.  See LICENSE.txt for the details.  The CHANGES.txt
-    file summarizes the changes made since version 1.10 and lists the
-    authors of those changes.
+    licensing terms.  See the LICENSE.txt file for the details.  The
+    CHANGES.txt file summarizes recent changes made to the package.
 
 
 /* vim: set ai tw=74 et sw=4 sts=4: */

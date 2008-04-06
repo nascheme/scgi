@@ -1,9 +1,8 @@
-This version of the SCGI package is derived from scgi 1.10, released
-by CNRI.  See doc/LICENSE_110.txt for the licensing terms of that
-release.  Changes made since that release are summarized in the
-CHANGES.txt file along with a list of authors. Those changes are made
-available under the following terms (commonly known as the MIT/X
-license).
+This version of the SCGI package is derived from scgi 1.10, released by
+CNRI.  See doc/LICENSE_110.txt for the licensing terms of that release.
+Changes made since that release are summarized in the CHANGES.txt file
+along with a list of authors. Those changes are made available under the
+following terms (commonly known as the MIT/X license).
 
 Copyright (c) the SCGI package developers
 
