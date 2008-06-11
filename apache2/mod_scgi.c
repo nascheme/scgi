@@ -319,8 +319,10 @@ send_headers(request_rec *r, struct sockbuff *s)
     if (!t)
 	    return APR_ENOMEM;
     /* CONTENT_LENGTH must come first and always be present */
-    add_header(t, "CONTENT_LENGTH",
-               apr_psprintf(r->pool, "%ld", r->remaining));
+    buf = lookup_header(r, "Content-Length");
+    if (buf == NULL)
+	    buf = "0";
+    add_header(t, "CONTENT_LENGTH",  buf);
     add_header(t, "SCGI", SCGI_PROTOCOL_VERSION);
     add_header(t, "SERVER_SOFTWARE", ap_get_server_version());
     add_header(t, "SERVER_PROTOCOL", r->protocol);
