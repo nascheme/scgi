@@ -42,6 +42,7 @@
 static int
 recv_fd(int sockfd)
 {
+	ssize_t rv;
 	char tmp[CMSG_SPACE(sizeof(int))];
 	struct cmsghdr *cmsg;
 	struct iovec iov;
@@ -56,8 +57,12 @@ recv_fd(int sockfd)
 	msg.msg_control = tmp;
 	msg.msg_controllen = sizeof(tmp);
 
-	if (recvmsg(sockfd, &msg, 0) <= 0)
+	Py_BEGIN_ALLOW_THREADS
+	rv = recvmsg(sockfd, &msg, 0);
+	Py_END_ALLOW_THREADS
+	if (rv <= 0) {
 		return -1;
+	}
 	cmsg = CMSG_FIRSTHDR(&msg);
 	return *(int *) CMSG_DATA(cmsg);
 }
@@ -65,6 +70,7 @@ recv_fd(int sockfd)
 static int
 send_fd (int sockfd, int fd)
 {
+	ssize_t rv;
 	char tmp[CMSG_SPACE(sizeof(int))];
 	struct cmsghdr *cmsg;
 	struct iovec iov;
@@ -84,7 +90,10 @@ send_fd (int sockfd, int fd)
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 
-	if (sendmsg(sockfd, &msg, 0) != 1)
+	Py_BEGIN_ALLOW_THREADS
+	rv = sendmsg(sockfd, &msg, 0);
+	Py_END_ALLOW_THREADS
+	if (rv != 1)
 		return -1;
 
 	return 0;
