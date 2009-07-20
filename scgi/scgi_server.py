@@ -218,7 +218,14 @@ class SCGIServer:
         # slate.
         #
         for pid in self.children.keys():
-            (pid, status) = os.waitpid(pid, 0)
+            while True:
+                try:
+                    (pid, status) = os.waitpid(pid, 0)
+                except OSError, exc:
+                    if exc.errno == errno.EINTR:
+                        continue # keep waiting even if interrupted
+                    else:
+                        raise
         self.children = {}
 
     def do_restart(self):
