@@ -48,6 +48,19 @@ def read_env(input):
         env[items[i]] = items[i+1]
     return env
 
+
+class Child:
+    def __init__(self, pid, fd):
+        self.pid = pid
+        self.fd = fd
+        self.closed = 0
+
+    def close(self):
+        if not self.closed:
+            os.close(self.fd)
+        self.closed = 1
+
+
 class SCGIHandler:
 
     # Subclasses should override the handle_connection method.
@@ -169,7 +182,7 @@ class SCGIServer:
         self.host = host
         self.port = port
         self.max_children = max_children
-        self.children = {} # { pid : fd }
+        self.children = []
         self.spawn_child()
         self.restart = 0
 
@@ -196,48 +209,32 @@ class SCGIServer:
             sys.exit(0)
         else:
             os.close(parent_fd)
-            self.children[pid] = child_fd
+            self.children.append(Child(pid, child_fd))
+
+    def get_child(self, pid):
+        for child in self.children:
+            if child.pid == pid:
+                return child
+        return None
 
     def reap_children(self):
         while self.children:
             (pid, status) = os.waitpid(-1, os.WNOHANG)
             if pid <= 0:
                 break
-            os.close(self.children[pid])
-            del self.children[pid]
+            child = self.get_child(pid)
+            child.close()
+            self.children.remove(child)
 
     def do_stop(self):
-        #
-        # First close connections to the children, which will cause them
-        # to exit after finishing what they are doing.
-        #
-        for fd in self.children.values():
-            os.close(fd)
-        #
-        # Then do a blocking wait on each until we have cleared the
-        # slate.
-        #
-        for pid in self.children.keys():
-            while True:
-                try:
-                    (pid, status) = os.waitpid(pid, 0)
-                except OSError, exc:
-                    if exc.errno == errno.EINTR:
-                        continue # keep waiting even if interrupted
-                    else:
-                        raise
-        self.children = {}
+        # Close connections to the children, which will cause them to exit
+        # after finishing what they are doing.
+        for child in self.children:
+            child.close()
 
     def do_restart(self):
-        # Stop
         self.do_stop()
-
-        #
-        # Fire off a new child, we'll be wanting it soon.
-        #
-        self.spawn_child()
         self.restart = 0
-
 
     def delegate_request(self, conn):
         """Pass a request fd to a child process to handle.  This method
@@ -258,8 +255,9 @@ class SCGIServer:
         timeout = 0
 
         while 1:
+            fds = [child.fd for child in self.children if not child.closed]
             try:
-                r, w, e = select.select(self.children.values(), [], [], timeout)
+                r, w, e = select.select(fds, [], [], timeout)
             except select.error, e:
                 if e[0] == errno.EINTR:  # got a signal, try again
                     continue
@@ -268,8 +266,12 @@ class SCGIServer:
                 # One or more children look like they are ready.  Sort
                 # the file descriptions so that we keep preferring the
                 # same child.
-                r.sort()
-                child_fd = r[0]
+                child = None
+                for child in self.children:
+                    if not child.closed and child.fd in r:
+                        break
+                if child is None:
+                    continue # no child found, should not get here
 
                 # Try to read the single byte written by the child.
                 # This can fail if the child died or the pipe really
@@ -278,7 +280,7 @@ class SCGIServer:
                 # we fall through to the "reap_children" logic and will
                 # retry the select call.
                 try:
-                    ready_byte = os.read(child_fd, 1)
+                    ready_byte = os.read(child.fd, 1)
                     if not ready_byte:
                         raise IOError # child died?
                     assert ready_byte == "1", repr(ready_byte)
@@ -296,7 +298,7 @@ class SCGIServer:
                     # through to the "reap_children" logic and will
                     # retry the select call.
                     try:
-                        passfd.sendfd(child_fd, conn.fileno())
+                        passfd.sendfd(child.fd, conn.fileno())
                     except IOError, exc:
                         if exc.errno == errno.EPIPE:
                             pass # broken pipe, child died?
