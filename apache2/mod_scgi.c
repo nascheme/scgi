@@ -539,10 +539,7 @@ static int scgi_handler(request_rec *r)
 
     rv = ap_scan_script_header_err_brigade(r, bb, NULL);
     if (rv) {
-        if (rv == HTTP_INTERNAL_SERVER_ERROR) {
-            log_err(APLOG_MARK, r, rv, "error reading response headers");
-        }
-        else {
+        if (rv != HTTP_INTERNAL_SERVER_ERROR) {
             /* Work around an Apache bug whereby the returned status is
              * ignored and status_line is used instead.  This bug is
              * present at least in 2.0.54.
@@ -575,8 +572,15 @@ static int scgi_handler(request_rec *r)
 
     rv = ap_pass_brigade(r->output_filters, bb);
     if (rv) {
-        log_err(APLOG_MARK, r, rv, "ap_pass_brigade()");
-        return HTTP_INTERNAL_SERVER_ERROR;
+	/* It's possible that the client closed the connection before
+           the transfer was complete. If so, don't return an error. */
+        if (r->connection->aborted) {
+            log_err(APLOG_MARK, r, rv, "sending response (error ignored)");
+	}
+	else {
+            log_err(APLOG_MARK, r, rv, "ap_pass_brigade()");
+            return HTTP_INTERNAL_SERVER_ERROR;
+        }
     }
 
     return OK;
