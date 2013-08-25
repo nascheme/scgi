@@ -63,7 +63,7 @@ class Child:
 
 class SCGIHandler:
 
-    # Subclasses should override the handle_connection method.
+    # Subclasses should normally override the produce method.
 
     def __init__(self, parent_fd):
         self.parent_fd = parent_fd
@@ -243,8 +243,9 @@ class SCGIServer:
         blocks if all the children are busy and we have reached the
         max_children limit."""
 
-        # There lots of subtleties here.  First, we can't use the write
-        # status of the pipes to the child since select will return true
+        # There lots of subtleties here.  First, to determine the readiness
+        # of a child we can't use the writable status of the Unix domain
+        # socket connected to the child, since select will return true
         # if the buffer is not filled.  Instead, each child writes one
         # byte of data when it is ready for a request.  The normal case
         # is that a child is ready for a request.  We want that case to
@@ -276,7 +277,7 @@ class SCGIServer:
                     continue # no child found, should not get here
 
                 # Try to read the single byte written by the child.
-                # This can fail if the child died or the pipe really
+                # This can fail if the child died or the socket really
                 # wasn't ready (select returns a hint only).  The fd has
                 # been made non-blocking by spawn_child.  If this fails
                 # we fall through to the "reap_children" logic and will
