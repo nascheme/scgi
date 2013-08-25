@@ -204,6 +204,8 @@ class SCGIServer:
             if conn:
                 conn.close() # in the midst of handling a request, close
                              # the connection in the child
+                self.socket.close() # also close other unneeded fds
+                for ch in self.children.values(): os.close(ch)
             os.close(child_fd)
             self.handler_class(parent_fd).serve()
             sys.exit(0)
