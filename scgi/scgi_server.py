@@ -201,12 +201,13 @@ class SCGIServer:
         fcntl.fcntl(child_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
         pid = os.fork()
         if pid == 0:
-            if conn:
+            if conn is not None:
                 conn.close() # in the midst of handling a request, close
                              # the connection in the child
-                self.socket.close() # also close other unneeded fds
-                for ch in self.children.values(): os.close(ch)
             os.close(child_fd)
+            self.socket.close()
+            for child in self.children.values():
+                child.close()
             self.handler_class(parent_fd).serve()
             sys.exit(0)
         else:
