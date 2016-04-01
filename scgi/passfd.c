@@ -120,8 +120,7 @@ passfd_sendfd(PyObject *self, PyObject *args)
 	return Py_None;
 }
 
-static char recvfd_doc [] =
-"recvfd(sockfd) -> fd";
+static char recvfd_doc [] = "recvfd(sockfd) -> fd";
 
 static PyObject *
 passfd_recvfd(PyObject *self, PyObject *args)
@@ -136,7 +135,7 @@ passfd_recvfd(PyObject *self, PyObject *args)
 		return NULL;
 	}
 
-	return PyInt_FromLong((long) fd);
+	return PyLong_FromLong((long) fd);
 }
 
 static char socketpair_doc [] =
@@ -159,6 +158,7 @@ passfd_socketpair(PyObject *self, PyObject *args)
 	return Py_BuildValue("(ii)", (long) fd[0], (long) fd[1]);
 }
 
+static char passfd_doc [] = "Pass file descriptors using socket pairs";
 
 /* List of functions */
 
@@ -166,16 +166,26 @@ static PyMethodDef passfd_methods[] = {
 	{"sendfd",	passfd_sendfd, METH_VARARGS, sendfd_doc},
 	{"recvfd",	passfd_recvfd, METH_VARARGS, recvfd_doc},
 	{"socketpair",	passfd_socketpair, METH_VARARGS, socketpair_doc},
-	{NULL,		NULL}		/* sentinel */
+	{NULL, NULL, 0, NULL}		/* sentinel */
 };
 
 
-DL_EXPORT(void)
-initpassfd(void)
+static struct PyModuleDef passfd_module = {
+	PyModuleDef_HEAD_INIT,
+	"passfd",
+	passfd_doc,
+	-1,
+	passfd_methods,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+};
+
+PyMODINIT_FUNC PyInit_passfd(void)
 {
-	PyObject *m;
+    PyObject *m = PyModule_Create(&passfd_module);
+    return m;
+};
 
-	/* Create the module and add the functions and documentation */
-	m = Py_InitModule3("passfd", passfd_methods, NULL);
 
-}

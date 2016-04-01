@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 A pre-forking SCGI server that uses file descriptor passing to off-load
 requests to child worker processes.
@@ -11,41 +11,47 @@ import select
 import errno
 import fcntl
 import signal
+import codecs
 from scgi import passfd
 
 # netstring utility functions
 def ns_read_size(input):
-    size = ""
+    size = b''
     while 1:
         c = input.read(1)
-        if c == ':':
+        if c == b':':
             break
         elif not c:
-            raise IOError, 'short netstring read'
+            raise IOError('short netstring read')
         size = size + c
-    return long(size)
+    return int(size)
 
 def ns_reads(input):
     size = ns_read_size(input)
-    data = ""
+    data = b''
     while size > 0:
         s = input.read(size)
         if not s:
-            raise IOError, 'short netstring read'
+            raise IOError('short netstring read')
         data = data + s
         size -= len(s)
-    if input.read(1) != ',':
-        raise IOError, 'missing netstring terminator'
+    if input.read(1) != b',':
+        raise IOError('missing netstring terminator')
     return data
+
+# string encoding for evironmental variables
+HEADER_ENCODING = 'iso-8859-1'
 
 def read_env(input):
     headers = ns_reads(input)
-    items = headers.split("\0")
+    items = headers.split(b'\0')
     items = items[:-1]
     assert len(items) % 2 == 0, "malformed headers"
     env = {}
     for i in range(0, len(items), 2):
-        env[items[i]] = items[i+1]
+        k = items[i].decode(HEADER_ENCODING)
+        v = items[i+1].decode(HEADER_ENCODING)
+        env[k] = v
     return env
 
 
@@ -71,7 +77,7 @@ class SCGIHandler:
     def serve(self):
         while 1:
             try:
-                os.write(self.parent_fd, "1") # indicates that child is ready
+                os.write(self.parent_fd, b'1') # indicates that child is ready
                 fd = passfd.recvfd(self.parent_fd)
             except (IOError, OSError):
                 # parent probably exited  (EPIPE comes thru as OSError)
@@ -94,8 +100,8 @@ class SCGIHandler:
         It will be easier (and therefore probably safer) to override
         produce() or produce_cgilike() instead.
         """
-        input = conn.makefile("r")
-        output = conn.makefile("w")
+        input = conn.makefile("rb")
+        output = conn.makefile("wb")
         env = self.read_env(input)
         bodysize = int(env.get('CONTENT_LENGTH', 0))
         try:
@@ -139,8 +145,8 @@ class SCGIHandler:
         environ = os.environ
 
         # Set up CGI-like environment for produce_cgilike()
-        sys.stdin = input
-        sys.stdout = output
+        sys.stdin = codecs.getreader('utf-8')(input)
+        sys.stdout = codecs.getwriter('utf-8')(output)
         os.environ = env
 
         # Call CGI-like version of produce() function
@@ -148,6 +154,8 @@ class SCGIHandler:
             self.produce_cgilike(env, bodysize)
         finally:
             # Restore original environment no matter what happens
+            sys.stdin.close()
+            sys.stdout.close()
             sys.stdin = stdin
             sys.stdout = stdout
             os.environ = environ
@@ -167,9 +175,10 @@ class SCGIHandler:
         Default implementation is to produce a text page listing the
         request's CGI parameters, which can be useful for debugging.
         """
-        sys.stdout.write("Content-Type: text/plain\r\n\r\n")
+        print("Content-Type: text/plain; charset=utf-8")
+        print()
         for k, v in env.items():
-            print "%s: %r" % (k, v)
+            print("%s: %r" % (k, v))
 
 
 class SCGIServer:
@@ -183,7 +192,6 @@ class SCGIServer:
         self.port = port
         self.max_children = max_children
         self.children = []
-        self.spawn_child()
         self.restart = 0
 
     #
@@ -206,7 +214,7 @@ class SCGIServer:
                              # the connection in the child
             os.close(child_fd)
             self.socket.close()
-            for child in self.children.values():
+            for child in self.children:
                 child.close()
             self.handler_class(parent_fd).serve()
             sys.exit(0)
@@ -262,8 +270,8 @@ class SCGIServer:
             fds = [child.fd for child in self.children if not child.closed]
             try:
                 r, w, e = select.select(fds, [], [], timeout)
-            except select.error, e:
-                if e[0] == errno.EINTR:  # got a signal, try again
+            except select.error as e:
+                if e.errno == errno.EINTR:  # got a signal, try again
                     continue
                 raise
             if r:
@@ -287,9 +295,9 @@ class SCGIServer:
                     ready_byte = os.read(child.fd, 1)
                     if not ready_byte:
                         raise IOError # child died?
-                    assert ready_byte == "1", repr(ready_byte)
-                except socket.error, exc:
-                    if exc[0]  == errno.EWOULDBLOCK:
+                    assert ready_byte == b"1", repr(ready_byte)
+                except socket.error as exc:
+                    if exc.errno  == errno.EWOULDBLOCK:
                         pass # select was wrong
                     else:
                         raise
@@ -303,7 +311,7 @@ class SCGIServer:
                     # retry the select call.
                     try:
                         passfd.sendfd(child.fd, conn.fileno())
-                    except IOError, exc:
+                    except IOError as exc:
                         if exc.errno == errno.EPIPE:
                             pass # broken pipe, child died?
                         else:
@@ -340,8 +348,8 @@ class SCGIServer:
                 conn, addr = self.socket.accept()
                 self.delegate_request(conn)
                 conn.close()
-            except socket.error, e:
-                if e[0] != errno.EINTR:
+            except socket.error as e:
+                if e.errno != errno.EINTR:
                     raise  # something weird
             if self.restart:
                 self.do_restart()

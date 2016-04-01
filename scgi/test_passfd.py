@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 
 import os, sys, socket
-import passfd
+from scgi import passfd
 import tempfile
 
 #
@@ -10,11 +10,11 @@ import tempfile
 #
 
 rfd, wfd = passfd.socketpair(socket.AF_UNIX, socket.SOCK_STREAM)
-print "rfd", rfd, "wfd", wfd
+print("rfd", rfd, "wfd", wfd)
 
 # We will pass this to the child
 fileObj = tempfile.TemporaryFile()
-line = 'Hello world!\n'
+line = b'Hello world!\n'
 fileObj.write(line)
 fileObj.flush()
 fileObj.seek(0)
@@ -32,7 +32,7 @@ if pid != 0:
     fd = fileObj.fileno()
 
     # Send to the child
-    os.write(wfd, "x")
+    os.write(wfd, b'x')
     passfd.sendfd(wfd, fd)
 
     # Wait for child to terminate, then exit.
@@ -45,15 +45,15 @@ else:
 
     fileObj.close()
     
-    print os.read(rfd, 1)
+    print(os.read(rfd, 1))
     fd = passfd.recvfd(rfd)
 
     # Reopen the filedescriptor as a Python File-object.
-    fileObj = os.fdopen(fd, 'r')
+    fileObj = os.fdopen(fd, 'rb')
 
     # Example usage: Read file, print the first line.
     data = fileObj.readline()
-    print "Read line: %r, expected %r" % (data, line)
+    print("Read line: %r, expected %r" % (data, line))
     assert line == data
     sys.exit(0)
 

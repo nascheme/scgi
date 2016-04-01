@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """
 A SCGI handler that uses Quixote to publish dynamic content.
 """
@@ -9,7 +9,7 @@ import os
 import getopt
 import signal
 from quixote import enable_ptl, publish
-import scgi_server
+from . import scgi_server
 
 pidfilename = None # set by main()
 
@@ -33,8 +33,8 @@ class QuixoteHandler(scgi_server.SCGIHandler):
         self.publisher = self.publisher_class(self.root_namespace)
 
     def handle_connection (self, conn):
-        input = conn.makefile("r")
-        output = conn.makefile("w")
+        input = conn.makefile("rb")
+        output = conn.makefile("wb")
 
         env = self.read_env(input)
 
@@ -52,7 +52,7 @@ class QuixoteHandler(scgi_server.SCGIHandler):
             input.close()
             output.close()
             conn.close()
-        except IOError, err:
+        except IOError as err:
             debug("IOError while closing connection ignored: %s" % err)
 
         if self.publisher.config.run_once:
@@ -121,9 +121,9 @@ def main(handler=DemoHandler):
     host = "127.0.0.1"
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'FP:l:m:p:u:')
-    except getopt.GetoptError, exc:
-        print >>sys.stderr, exc
-        print >>sys.stderr, usage
+    except getopt.GetoptError as exc:
+        print(exc, file=sys.stderr)
+        print(usage, file=sys.stderr)
         sys.exit(1)
     for o, v in opts:
         if o == "-F":
