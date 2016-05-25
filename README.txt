@@ -23,14 +23,6 @@ Software
         protocol.
 
 
-    apache1
-    -------
-
-        An Apache 1.3 module that implements the client side of the
-        protocol.  See the README file in the apache1 directory for more
-        details.
-
-
     apache2
     -------
 
