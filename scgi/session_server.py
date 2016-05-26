@@ -309,7 +309,7 @@ class SCGIServer:
         if now - self.last_prune < 20:
             return
         self.last_prune = now
-        for child in self.children.values():
+        for child in list(self.children.values()):
             if self._is_old(child):
                 log('closed old child (pid=%s nchild=%s)' %
                                        (child.pid, len(self.children)-1))
