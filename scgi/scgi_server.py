@@ -88,7 +88,11 @@ class SCGIHandler:
             # have the resources to track it down.
             conn.setblocking(1)
             os.close(fd)
-            self.handle_connection(conn)
+            try:
+                self.handle_connection(conn)
+            finally:
+                conn.shutdown(socket.SHUT_RDWR)
+                conn.close()
 
 
     def read_env(self, input):
@@ -109,7 +113,6 @@ class SCGIHandler:
         finally:
             output.close()
             input.close()
-            conn.close()
 
     def produce(self, env, bodysize, input, output):
         """This is the function you normally override to run your
