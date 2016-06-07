@@ -84,7 +84,10 @@ class SCGIHandler:
             try:
                 self.handle_connection(conn)
             finally:
-                conn.shutdown(socket.SHUT_RDWR)
+                try:
+                    conn.shutdown(socket.SHUT_RDWR)
+                except OSError:
+                    pass
                 conn.close()
 
     def read_env(self, input):
