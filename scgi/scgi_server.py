@@ -13,6 +13,7 @@ import fcntl
 import signal
 from scgi import passfd
 from scgi.util import SCGIHandler, log
+from scgi.systemd_socket import get_systemd_socket
 
 
 class Child:
@@ -216,7 +217,12 @@ class SCGIServer:
                 self.do_restart()
 
     def serve(self):
-        self.serve_on_socket(self.get_listening_socket())
+        sock = get_systemd_socket()
+        if sock is not None:
+            log('Using inherited socket %r' % (sock.getsockname(),))
+        else:
+            sock = self.get_listening_socket()
+        self.serve_on_socket(sock)
 
 
 def main():

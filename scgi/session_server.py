@@ -22,6 +22,7 @@ import traceback
 import io
 from scgi import passfd
 from scgi.util import SCGIHandler, log, ns_reads, parse_env
+from scgi.systemd_socket import get_systemd_socket
 
 def send_http_error(code, conn):
     # send a minimal HTTP error to the client.  We have to fork
@@ -352,7 +353,12 @@ class SCGIServer:
 
 
     def serve(self):
-        self.serve_on_socket(self.get_listening_socket())
+        sock = get_systemd_socket()
+        if sock is not None:
+            log('Using inherited socket %r' % (sock.getsockname(),))
+        else:
+            sock = self.get_listening_socket()
+        self.serve_on_socket(sock)
 
 
 def main():
