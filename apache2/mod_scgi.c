@@ -4,7 +4,7 @@
  *
  */
 
-#define MOD_SCGI_VERSION "2.0a1"
+#define MOD_SCGI_VERSION "2.0b1"
 #define SCGI_PROTOCOL_VERSION "1"
 
 #include "ap_config.h"

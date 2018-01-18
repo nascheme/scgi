@@ -39,6 +39,7 @@ if hasattr(core, 'setup_keywords'):
           'Operating System :: Microsoft :: Windows',
           'Operating System :: MacOS :: MacOS X',
           'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
+          'Programming Language :: Python :: 3 :: Only',
           ]
     if 'download_url' in core.setup_keywords:
         kw['download_url'] = ('http://python.ca/scgi/releases/'
