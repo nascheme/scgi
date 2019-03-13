@@ -102,18 +102,14 @@ class Child:
         try:
             ready_byte = os.read(self.fd, 1)
             if not ready_byte:
-                self.log('null read while getting child status')
-                raise IOError # child died?
+                raise IOError('null read from child')
             assert ready_byte == b'1', repr(ready_byte)
-        except socket.error as exc:
+        except (OSError, IOError) as exc:
             if exc.errno  == errno.EWOULDBLOCK:
-                return # select was wrong, retry
+                # select was wrong and fd not ready.  Child might
+                # still be busy so keep it alive (don't close).
+                return
             self.log('error while getting child status: %s' % exc)
-            self.close()
-        except (OSError, IOError):
-            # child died?
-            self.log('IOError while getting child status')
-            self.close()
         else:
             try:
                 passfd.sendfd(self.fd, conn.fileno())
@@ -121,12 +117,9 @@ class Child:
                 if exc.errno == errno.EPIPE:
                     # broken pipe, child died?
                     self.log('EPIPE passing fd to child')
-                    self.close()
                 else:
                     # some other error that we don't expect
-                    self.log('IOError passing fd to child: %s' %
-                                     exc.errno)
-                    raise
+                    self.log('IOError passing fd to child: %s' % exc.errno)
             else:
                 # fd was apparently passed okay to the child.
                 # The child could die before completing the
@@ -134,6 +127,13 @@ class Child:
                 self.last_used = time.time()
                 conn.close()
                 del self.queue[0]
+                return
+        # We have failed to pass the fd to the child.  Since the
+        # child is not behaving how we expect, we close 'fd'.  That
+        # will cause the child to die (if it hasn't already).  We will
+        # reap the exit status in reap_children() and remove the Child()
+        # object from the 'children' list.
+        self.close()
 
 
 class SCGIServer:

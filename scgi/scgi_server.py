@@ -38,18 +38,15 @@ class Child:
         try:
             ready_byte = os.read(self.fd, 1)
             if not ready_byte:
-                self.log('null read while getting child status')
-                raise IOError # child died?
+                raise IOError('null read from child')
             assert ready_byte == b"1", repr(ready_byte)
-        except socket.error as exc:
+        except (OSError, IOError) as exc:
             if exc.errno  == errno.EWOULDBLOCK:
-                pass # select was wrong
+                # select was wrong and fd not ready.  Child might
+                # still be busy so keep it alive (don't close).
+                return False
             else:
                 self.log('error while getting child status: %s' % exc)
-                raise
-        except (OSError, IOError):
-            # child died?
-            self.log('IOError while getting child status')
         else:
             # The byte was read okay, now we need to pass the fd
             # of the request to the child.  This can also fail
@@ -64,14 +61,18 @@ class Child:
                     self.log('EPIPE passing fd to child')
                 else:
                     # some other error that we don't expect
-                    self.log('IOError passing fd to child: %s' %
-                                     exc.errno)
-                    raise
+                    self.log('IOError passing fd to child: %s' % exc.errno)
             else:
                 # fd was apparently passed okay to the child.
                 # The child could die before completing the
                 # request but that's not our problem anymore.
                 return True
+        # We have failed to pass the fd to the child.  Since the
+        # child is not behaving how we expect, we close 'fd'.  That
+        # will cause the child to die (if it hasn't already).  We will
+        # reap the exit status in reap_children() and remove the Child()
+        # object from the 'children' list.
+        self.close()
         return False # did not pass fd successfully
 
 
@@ -165,12 +166,7 @@ class SCGIServer:
 
         while 1:
             fds = [child.fd for child in self.children if not child.closed]
-            try:
-                r, w, e = select.select(fds, [], [], timeout)
-            except select.error as e:
-                if e.errno == errno.EINTR:  # got a signal, try again
-                    continue
-                raise
+            r, w, e = select.select(fds, [], [], timeout)
             if r:
                 # One or more children look like they are ready.  Sort
                 # the file descriptions so that we keep preferring the
@@ -206,13 +202,9 @@ class SCGIServer:
         self.socket.listen(40)
         signal.signal(signal.SIGHUP, self.hup_signal)
         while 1:
-            try:
-                conn, addr = self.socket.accept()
-                self.delegate_request(conn)
-                conn.close()
-            except socket.error as e:
-                if e.errno != errno.EINTR:
-                    raise  # something weird
+            conn, addr = self.socket.accept()
+            self.delegate_request(conn)
+            conn.close()
             if self.restart:
                 self.do_restart()
 
