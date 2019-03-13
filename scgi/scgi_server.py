@@ -164,7 +164,12 @@ class SCGIServer:
         # then we want another child to be started without delay.
         timeout = 0
 
-        while 1:
+        # Number of times to retry delegating request.  If no child can
+        # be found after those tries, give up.  In that case 'conn' will
+        # be closed without handling it.
+        retry_count = 30
+
+        for i in range(retry_count):
             fds = [child.fd for child in self.children if not child.closed]
             r, w, e = select.select(fds, [], [], timeout)
             if r:
@@ -190,6 +195,7 @@ class SCGIServer:
             # Start blocking inside select.  We might have reached
             # max_children limit and they are all busy.
             timeout = 2
+        log('failed to delegate request %s' % conn)
 
     def get_listening_socket(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
