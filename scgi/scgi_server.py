@@ -183,6 +183,7 @@ class SCGIServer:
         self.port = port
         self.max_children = max_children
         self.children = []
+        self.socket = None
         self.spawn_child()
         self.restart = 0
 
@@ -205,8 +206,9 @@ class SCGIServer:
                 conn.close() # in the midst of handling a request, close
                              # the connection in the child
             os.close(child_fd)
-            self.socket.close()
-            for child in self.children.values():
+            if self.socket is not None:
+                self.socket.close()
+            for child in self.children:
                 child.close()
             self.handler_class(parent_fd).serve()
             sys.exit(0)
