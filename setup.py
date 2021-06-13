@@ -3,8 +3,7 @@
 import sys
 import re
 import os
-from distutils import core
-from distutils.extension import Extension
+from setuptools import setup, Extension
 from scgi.__init__ import __version__
 
 # Ensure that version number is correct.
@@ -19,7 +18,7 @@ if 'sdist' in sys.argv[1:]:
     _check_version_numbers()
 
 
-core.setup(
+setup(
     name="scgi",
     version=__version__,
     description="A Python package for implementing SCGI servers.",
