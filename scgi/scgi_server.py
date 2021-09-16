@@ -131,8 +131,9 @@ class SCGIServer:
             if pid <= 0:
                 break
             child = self.get_child(pid)
-            child.close()
-            self.children.remove(child)
+            if child is not None:
+                child.close()
+                self.children.remove(child)
 
     def do_stop(self):
         # Close connections to the children, which will cause them to exit

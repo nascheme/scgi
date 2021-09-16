@@ -265,7 +265,7 @@ class SCGIServer:
         return s
 
     def reap_children(self):
-        while 1:
+        while self.children:
             try:
                 (pid, status) = os.waitpid(-1, os.WNOHANG)
             except OSError:
