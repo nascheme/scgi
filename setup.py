@@ -6,6 +6,14 @@ import os
 from setuptools import setup, Extension
 from scgi.__init__ import __version__
 
+
+LONG_DESC = """\
+SCGI is a protocol for connecting web application servers to HTTP
+servers (e.g. Apache, nginx).  Contained in this package is a library to
+implement the application server side of the protocol.
+"""
+
+
 # Ensure that version number is correct.
 def _check_version_numbers():
     PAT = re.compile(r'(^|VERSION ")%s\b' % re.escape(__version__), re.M)
@@ -17,11 +25,11 @@ def _check_version_numbers():
 if 'sdist' in sys.argv[1:]:
     _check_version_numbers()
 
-
 setup(
     name="scgi",
     version=__version__,
     description="A Python package for implementing SCGI servers.",
+    long_description=LONG_DESC,
     author="Neil Schemenauer",
     author_email="nas@arctrix.com",
     # url =  "http://",
