@@ -6,8 +6,8 @@ Protocol
 
     SCGI is a protocol for connecting web application servers to HTTP
     servers (e.g. Apache).  For typical applications, it provides much
-    better performance verses using CGI.  See http://python.ca/scgi/ for
-    details on the SCGI protocol including a specification.
+    better performance verses using CGI.  See the `doc/protocol.txt`
+    file for details on the SCGI protocol including a specification.
 
 
 Software
@@ -54,7 +54,7 @@ Source
     The source code is managed using git.  You can checkout a copy using
     the command:
 
-        git clone http://quixote.ca/src/scgi.git
+        git clone https://github.com/nascheme/scgi.git
 
 
 License
