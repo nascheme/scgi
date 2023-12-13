@@ -208,6 +208,11 @@ class SCGIServer:
         self.do_stop()
         self.restart = 0
 
+    def _parse_session_env(self, buf):
+        headers = ns_reads(io.BytesIO(buf))
+        env = parse_env(headers)
+        return env
+
     def extract_session_id(self, conn):
         """Find a session indentifier for the current request.  Return
         the ID and the SCGI environment dictionary.
@@ -220,9 +225,8 @@ class SCGIServer:
         # if there is no data available
         r, w, e = select.select([conn], [], [], 0.2)
         if r:
-            headers = conn.recv(4096, socket.MSG_PEEK)
-            headers = ns_reads(io.BytesIO(headers))
-            env = parse_env(headers)
+            buf = conn.recv(4096, socket.MSG_PEEK)
+            env = self._parse_session_env(buf)
             cookies = env.get('HTTP_COOKIE')
             if cookies:
                 m = re.search(self.SESSION_ID_PATTERN, cookies)

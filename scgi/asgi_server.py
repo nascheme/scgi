@@ -116,6 +116,22 @@ class ProtocolError(Exception):
     pass
 
 
+def _env_add_headers(env, headers):
+    """Add HTTP style headers from 'headers' to CGI style header environment
+    'env'.  E.g. the "Cookies" header is stored as "HTTP_COOKIES" in the
+    environment.
+    """
+    for name in headers.keys():
+        if '_' in name:
+            # ignore, prevents header smuggling
+            continue
+        values = headers.get_all(name)
+        value = ','.join(values)
+        name = name.replace('-', '_').upper()
+        if name not in env:
+            env['HTTP_' + name] = value.strip()
+
+
 def parse_env(conn, host_name, host_port, headers):
     split_newlines = re.compile(r'\r?\n').split
     lines = split_newlines(headers.decode('latin1'))
@@ -188,15 +204,7 @@ def parse_env(conn, host_name, host_port, headers):
     length = headers.get('content-length')
     if length:
         env['CONTENT_LENGTH'] = length
-    for name in headers.keys():
-        if '_' in name:
-            # ignore, prevents header smuggling
-            continue
-        values = headers.get_all(name)
-        value = ','.join(values)
-        name = name.replace('-', '_').upper()
-        if name not in env:
-            env['HTTP_' + name] = value.strip()
+    _env_add_headers(env, headers)
     if DEBUG_ENV:
         debug('request env:')
         pprint.pprint(env)
@@ -481,9 +489,21 @@ def handler_factory(args: ServerArgs):
     return make_handler
 
 
+class ASGIServer(session_server.SCGIServer):
+    def _parse_session_env(self, buf):
+        # Used by extract_session_id().  Uses peak on the socket and tries
+        # to parse the HTTP request headers in order to find a session ID.
+        # Ideally, use the session cookie ID.
+        first_line, _, rest = buf.partition(b'\r\n')
+        headers = http.client.parse_headers(io.BytesIO(rest))
+        env = {}
+        _env_add_headers(env, headers)
+        return env
+
+
 def run_server(args: ServerArgs):
     print('server running on %s:%s' % (args.host, args.port))
-    session_server.SCGIServer(
+    ASGIServer(
         handler_class=handler_factory(args),
         host=args.host,
         port=args.port,
