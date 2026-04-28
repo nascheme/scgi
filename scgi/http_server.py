@@ -192,6 +192,8 @@ def parse_env(
     if len(parts_req) != 3:
         raise ProtocolError("invalid request line")
     method, uri, version = parts_req
+    if version not in ("HTTP/1.0", "HTTP/1.1"):
+        raise ProtocolError("unsupported HTTP version: %s" % version)
     path, _, qs = uri.partition("?")
     env: dict = {
         "CONTENT_LENGTH": "0",
@@ -213,7 +215,12 @@ def parse_env(
         env["CONTENT_TYPE"] = parsed_headers.get_content_type()
     else:
         env["CONTENT_TYPE"] = parsed_headers["content-type"]
-    length = parsed_headers.get("content-length")
+    if parsed_headers.get("transfer-encoding"):
+        raise ProtocolError("Transfer-Encoding not supported")
+    cl_values = parsed_headers.get_all("content-length") or []
+    if len(cl_values) > 1:
+        raise ProtocolError("duplicate Content-Length headers")
+    length = cl_values[0] if cl_values else None
     if length:
         env["CONTENT_LENGTH"] = length
     for name in parsed_headers.keys():
