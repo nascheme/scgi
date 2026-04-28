@@ -78,6 +78,7 @@ MAX_AGE = 7200
 # Hard timeout: kill child unconditionally after this many idle seconds
 CHILD_TIMEOUT = 600
 
+
 class ProtocolError(Exception):
     pass
 
@@ -301,8 +302,13 @@ class Child:
     def close(self) -> None:
         if not self.closed:
             os.close(self.child_fd)
+            # Close only the send side.  Closing the receive side would
+            # discard already-queued pending items (so their waiters in
+            # process_request would hang) and make the watcher's drain
+            # loop raise ClosedResourceError — which previously crashed
+            # the master.  Closing the send side signals EndOfChannel to
+            # the watcher cleanly.
             self._send_chan.close()
-            self._recv_chan.close()
             self.closed = True
 
     def enqueue(self, pending: _PendingRequest) -> bool:
@@ -387,7 +393,7 @@ class Child:
                 pending.child_sock.close()
                 pending.failed = True
                 pending.ready_event.set()
-        except (trio.WouldBlock, trio.EndOfChannel):
+        except (trio.WouldBlock, trio.EndOfChannel, trio.ClosedResourceError):
             pass
 
 
@@ -435,8 +441,23 @@ class HTTPServer:
             # Ignore SIGINT in children — the master handles Ctrl-C and
             # shuts children down by closing their socketpairs.
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            self.create_handler(child_fd).serve()
-            sys.exit(0)
+            # The child must stay in pure sync code after fork: trio's epoll
+            # fd is duplicated by fork(), so any trio activity here would
+            # share epoll state with the parent and corrupt its I/O.  Run
+            # the SCGI loop synchronously and bypass trio entirely on exit
+            # via os._exit, so SystemExit raised by SCGIHandler.serve on
+            # parent disconnect doesn't propagate into the parent nursery
+            # as a noisy ExceptionGroup.
+            try:
+                self.create_handler(child_fd).serve()
+            except SystemExit:
+                pass
+            except BaseException:
+                traceback.print_exc()
+                sys.stdout.flush()
+                sys.stderr.flush()
+                os._exit(1)
+            os._exit(0)
         else:
             os.close(child_fd)
             child = Child(session_id, pid, parent_fd)
