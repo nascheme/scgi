@@ -41,7 +41,6 @@ import secrets
 import select
 import signal
 import socket
-import sys
 import tempfile
 import time
 import traceback
@@ -77,6 +76,7 @@ MAX_AGE = 7200
 
 # Hard timeout: kill child unconditionally after this many idle seconds
 CHILD_TIMEOUT = 600
+
 
 class ProtocolError(Exception):
     pass
@@ -415,8 +415,9 @@ class HTTPServer:
         self.children: dict[str, Child] = {}
         self.last_prune = 0.0
         self._nursery = None
+        self._child_handler = None
 
-    def _spawn_child(self, session_id: str) -> Child:
+    async def _spawn_child(self, session_id: str) -> Child:
         """Fork a new worker process and register it."""
         # control socketpair: parent_fd stays in master, child_fd goes to child
         parent_fd, child_fd = passfd.socketpair(
@@ -435,8 +436,14 @@ class HTTPServer:
             # Ignore SIGINT in children — the master handles Ctrl-C and
             # shuts children down by closing their socketpairs.
             signal.signal(signal.SIGINT, signal.SIG_IGN)
-            self.create_handler(child_fd).serve()
-            sys.exit(0)
+            # Stash the handler and unwind trio cleanly.  The synchronous
+            # SCGI loop runs outside trio.run (see HTTPServer.run) so that
+            # SystemExit and unexpected exceptions are handled by Python's
+            # normal mechanisms instead of being wrapped in a trio
+            # ExceptionGroup.
+            self._child_handler = self.create_handler(child_fd)
+            self._nursery.cancel_scope.cancel()
+            await trio.lowlevel.checkpoint()
         else:
             os.close(child_fd)
             child = Child(session_id, pid, parent_fd)
@@ -495,10 +502,10 @@ class HTTPServer:
                     del self.children[sid]
         self._reap_children()
 
-    def _get_or_spawn_child(self, session_id: str) -> Child:
+    async def _get_or_spawn_child(self, session_id: str) -> Child:
         child = self.children.get(session_id)
         if child is None or child.closed:
-            child = self._spawn_child(session_id)
+            child = await self._spawn_child(session_id)
         return child
 
     def get_listening_socket(self) -> socket.socket:
@@ -565,7 +572,7 @@ class HTTPServer:
         req_file.seek(0)
 
         session_id = _extract_session_id(req.env)
-        child = self._get_or_spawn_child(session_id)
+        child = await self._get_or_spawn_child(session_id)
 
         # create a socketpair for this request's SCGI data:
         #   master_sock  — stays in master, used for async I/O via trio
@@ -664,3 +671,16 @@ class HTTPServer:
             sock = self.get_listening_socket()
         sock = trio.socket.from_stdlib_socket(sock)
         await self.serve_on_socket(sock)
+
+    def run(self) -> None:
+        """Run the server.  Use this instead of ``trio.run(server.serve)``.
+
+        After ``trio.run`` returns, if we are a forked child worker, run
+        the synchronous SCGI loop here — outside trio — so SystemExit and
+        any unexpected exceptions are handled by Python's default
+        mechanisms instead of being wrapped in a trio ExceptionGroup.
+        """
+        trio.run(self.serve)
+        handler = self._child_handler
+        if handler is not None:
+            handler.serve()
